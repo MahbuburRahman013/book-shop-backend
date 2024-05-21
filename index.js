@@ -25,7 +25,7 @@ async function connectToMongo() {
     const userCollection = client.db("BookInventory").collection("all-user");
     const careerCollection = client.db("BookInventory").collection("career");
     const careerApplyJobCollection = client.db("BookInventory").collection("job-apply");
-    const bookPublishCollection = client.db("BookInventory").collection("job-apply");
+    const bookPublishCollection = client.db("BookInventory").collection("book-publish");
 
     // GET route to retrieve all books
     app.get("/all-books", async (req, res) => {
@@ -340,6 +340,35 @@ async function connectToMongo() {
       }
       
     });
+
+
+    app.post("/career/form", async (req, res) => {
+      try {
+        const {formData} = req.body;
+        const result = await careerApplyJobCollection.insertOne(formData)
+        res.send(result)
+       
+       
+      } catch (err) {
+        console.error("Error adding book:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    app.get("/all-apply-job", async (req, res) => {
+      try{
+
+        const result = await careerApplyJobCollection.find().toArray();
+        res.send(result);
+
+      }catch (err) {
+        console.error("Error adding book:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+      
+    });
+    
+
  
 
   } catch (err) {
