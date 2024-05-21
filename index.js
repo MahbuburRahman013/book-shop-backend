@@ -19,9 +19,13 @@ async function connectToMongo() {
     // await client.connect();
     const db = client.db("BookInventory");
     const bookCollection = db.collection("Books");
-    const paymentInfoCollection = client.db("BookInventory").collection("paymentInfo");
+    const paymentInfoCollection = client
+      .db("BookInventory")
+      .collection("paymentInfo");
     const userCollection = client.db("BookInventory").collection("all-user");
     const careerCollection = client.db("BookInventory").collection("career");
+    const careerApplyJobCollection = client.db("BookInventory").collection("job-apply");
+    const bookPublishCollection = client.db("BookInventory").collection("job-apply");
 
     // GET route to retrieve all books
     app.get("/all-books", async (req, res) => {
@@ -90,9 +94,10 @@ async function connectToMongo() {
     // POST route to add a new book
     app.post("/add-book", async (req, res) => {
       try {
-        const newBook = req.body;
-        const result = await bookCollection.insertOne(newBook);
-        res.json({ message: "Book added successfully", id: result.insertedId });
+        const {bookData} = req.body;
+        console.log(bookData)
+        const result = await bookCollection.insertOne(bookData);
+        res.json(result);
       } catch (err) {
         console.error("Error adding book:", err);
         res.status(500).json({ error: "Internal server error" });
@@ -188,16 +193,17 @@ async function connectToMongo() {
 
     app.get("/all-payment-data", async (req, res) => {
       try {
-        const {email} = req.body;
+        const { email } = req.body;
         console.log(email);
-        if(email){
-          const result = await paymentInfoCollection.find({'payInfo.email':email}).toArray();
+        if (email) {
+          const result = await paymentInfoCollection
+            .find({ "payInfo.email": email })
+            .toArray();
           res.send(result);
-        }else{
+        } else {
           const result = await paymentInfoCollection.find().toArray();
           res.send(result);
         }
-       
       } catch (err) {
         console.error("Error adding book:", err);
         res.status(500).json({ error: "Internal server error" });
@@ -208,11 +214,10 @@ async function connectToMongo() {
       try {
         const email = req.params.email;
         // console.log(email);
-        const query = {'payInfo.email': email};
-        const result = await paymentInfoCollection.find(query).toArray()
+        const query = { "payInfo.email": email };
+        const result = await paymentInfoCollection.find(query).toArray();
         console.log(result);
-        res.send(result)
-       
+        res.send(result);
       } catch (err) {
         console.error("Error adding book:", err);
         res.status(500).json({ error: "Internal server error" });
@@ -238,75 +243,104 @@ async function connectToMongo() {
         const { status: updateStatus, id } = req.body;
         const query = { _id: new ObjectId(id) };
         const updateDoc = {
-          $set: {'payInfo.status': updateStatus },
+          $set: { "payInfo.status": updateStatus },
         };
 
         const result = await paymentInfoCollection.updateOne(query, updateDoc);
         res.send(result);
-
       } catch (err) {
         console.error("Error adding book:", err);
         res.status(500).json({ error: "Internal server error" });
       }
     });
 
-
     // all user email save
 
-    app.post('/user', async(req,res)=> {
-        try{
-            const {email} = req.body;
-            const findUser = await userCollection.findOne({email: email})
-            if(findUser){
-              res.send({message: 'loggedIn', role: findUser?.role});
-              console.log(findUser);
-
-            }else{
-                const result = await userCollection.insertOne({email: email, role: 'user'})
-                res.send({result, message: 'new user', role:'user'});
-            }
-
+    app.post("/user", async (req, res) => {
+      try {
+        const { email } = req.body;
+        const findUser = await userCollection.findOne({ email: email });
+        if (findUser) {
+          res.send({ message: "loggedIn", role: findUser?.role });
+          console.log(findUser);
+        } else {
+          const result = await userCollection.insertOne({
+            email: email,
+            role: "user",
+          });
+          res.send({ result, message: "new user", role: "user" });
         }
-        catch (err) {
-          console.error("Error adding book:", err);
-          res.status(500).json({ error: "Internal server error" });
+      } catch (err) {
+        console.error("Error adding book:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    app.get("/user-role/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await userCollection.findOne({ email: email });
+      res.send(result);
+    });
+
+    // search career data
+    app.get("/search-career-data/:title", async (req, res) => {
+      try {
+        const title = req.params.title;
+
+        if (title === "all") {
+          const result = await careerCollection
+            .find({}, { projection: { _id: 1, title: 1, location: 1 } })
+            .toArray();
+          res.send(result);
+        } else {
+          const regex = new RegExp(title, "i");
+          const result = await careerCollection
+            .find(
+              { title: regex },
+              { projection: { _id: 1, title: 1, location: 1 } }
+            )
+            .toArray();
+          res.send(result);
         }
-    })
+      } catch (err) {
+        console.error("Error adding book:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
 
-  app.get('/user-role/:email', async(req, res)=> {
-       const email = req.params.email;
-       const result = await userCollection.findOne({email: email});
-       res.send(result);
-  })
+    //career single data
 
-// search career data
-  app.get("/search-career-data/:title", async (req, res) => {
-    try {
-
-      const title  = req.params.title;
-
-     if(title === 'all'){
-      const result = await careerCollection.find({}, { projection: { _id: 1, title: 1, location: 1 } }).toArray();
+    app.get("/search-career-single-data/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await careerCollection.findOne({ _id: id });
       res.send(result);
-     }else{
-      const regex = new RegExp(title, "i");
-      const result = await careerCollection.find({ title: regex }, { projection: { _id: 1, title: 1, location: 1 } }).toArray();
-      res.send(result);
-     }
+    });
 
-    } catch (err) {
-      console.error("Error adding book:", err);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
 
-//career single data
+    // POST route to add a new book publish request
+    app.post("/add-publish-book", async (req, res) => {
+      try {
+        const {bookData} = req.body;
+        const result = await bookPublishCollection.insertOne(bookData);
+        res.json(result);
+      } catch (err) {
+        console.error("Error adding book:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
 
-app.get('/search-career-single-data/:id', async(req, res)=> {
-  const id = req.params.id;
-  const result = await careerCollection.findOne({_id: id});
-  res.send(result);
-})
+    app.get("/publish-request/:email", async (req, res) => {
+      const email = req.params.email;
+      if(email === 'admin'){
+        const result = await bookPublishCollection.find().toArray();
+        res.send(result);
+      }else{
+        const result = await bookPublishCollection.find({email:email}).toArray();
+        res.send(result);
+      }
+      
+    });
+ 
 
   } catch (err) {
     console.error("Error connecting to MongoDB:", err);
