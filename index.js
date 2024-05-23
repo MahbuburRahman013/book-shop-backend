@@ -49,6 +49,21 @@ async function connectToMongo() {
       }
     });
 
+    // get all books data for dashboard manage books
+    app.get("/all-books-manage", async (req, res) => {
+      try {
+        
+        const {page} = req.query
+        const convertPageNumber = parseInt(page)
+       const result = await bookCollection.find().skip(page * 10).limit(10).toArray()
+       res.send(result)
+       
+      } catch (err) {
+        console.error("Error retrieving books:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
     // all books data api for pagination
     app.get("/all-books-data", async (req, res) => {
       try {
@@ -76,6 +91,40 @@ async function connectToMongo() {
       }
     });
 
+    // delete a book on dashboard
+    app.delete("/delete-book/:id", async (req, res) => {
+      try {
+        const bookId = req.params.id;
+        const result = await bookCollection.deleteOne({_id: new ObjectId(bookId)})
+        res.send(result);
+        
+      } catch (err) {
+        console.error("Error retrieving book by ID:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    app.patch('/update-book', async(req, res)=> {
+           const {bookObj} = req.body;
+           const {id, bookTitle,authorName,imageURL,category,bookDescription,price,rating} = bookObj
+
+           const query = {_id: new ObjectId(id)};
+           const updateData = {
+               $set:{
+                bookTitle: bookTitle,
+                authorName: authorName,
+                imageURL: imageURL,
+                category: category,
+                bookDescription: bookDescription,
+                price: price,
+                rating: rating
+               }
+           }
+
+           const result = await bookCollection.updateOne(query,updateData)
+           res.send(result);
+    })
+
     // GET route to retrieve a single book by its ID
     app.get("/book/:id", async (req, res) => {
       try {
@@ -94,10 +143,10 @@ async function connectToMongo() {
     // POST route to add a new book
     app.post("/add-book", async (req, res) => {
       try {
-        const {bookData} = req.body;
-        console.log(bookData)
-        const result = await bookCollection.insertOne(bookData);
+        const {bookObj} = req.body;
+        const result = await bookCollection.insertOne(bookObj);
         res.json(result);
+        
       } catch (err) {
         console.error("Error adding book:", err);
         res.status(500).json({ error: "Internal server error" });
@@ -358,7 +407,7 @@ async function connectToMongo() {
     app.get("/all-apply-job", async (req, res) => {
       try{
 
-        const result = await careerApplyJobCollection.find().toArray();
+        const result = await careerApplyJobCollection.find({}, { projection: { _id: 1, firstName: 1, email: 1 } }).toArray();
         res.send(result);
 
       }catch (err) {
@@ -368,6 +417,32 @@ async function connectToMongo() {
       
     });
     
+    app.get("/single-apply-job/:id", async (req, res) => {
+      try{
+        const id = req.params.id;
+        const result = await careerApplyJobCollection.findOne({_id: new ObjectId(id)})
+        res.send(result);
+
+      }catch (err) {
+        console.error("Error adding book:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+      
+    });
+
+
+    // all users get for dashboard
+    app.get("/all-users", async (req, res) => {
+      try{
+        const result = await userCollection.find().toArray();
+        res.send(result);
+
+      }catch (err) {
+        console.error("Error adding book:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+      
+    });
 
  
 
